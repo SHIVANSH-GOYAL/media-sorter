@@ -1,8 +1,6 @@
 # Media Sorter
 
-Local, offline photo/video library that groups pictures by **who is in them**, their **estimated age band**, and **when they were taken**. Everything runs on this laptop's CPU. Nothing is uploaded.
-
-Built for `D:\Projects\media-sorter`; database, thumbnails and models stay on D:.
+Local, offline photo/video library that groups pictures by **who is in them**, their **estimated age band**, and **when they were taken**. Everything runs on this machine's CPU. Nothing is uploaded.
 
 ## Clone & run
 
@@ -11,7 +9,7 @@ git clone https://github.com/<your-username>/media-sorter.git
 cd media-sorter
 ```
 
-Then double-click `setup.bat` → `models.bat` → `scan.bat` → `serve.bat`. Nothing is written to `C:`.
+Then double-click `setup.bat` → `models.bat` → `scan.bat` → `serve.bat`. Nothing is written to the system drive.
 
 ## What it does
 
@@ -26,7 +24,7 @@ Then double-click `setup.bat` → `models.bat` → `scan.bat` → `serve.bat`. N
 
 ### One-time setup (double-click)
 
-Run **`setup.bat`** — it creates the Python virtualenv on `D:` and installs all dependencies. You only need to do this once.
+Run **`setup.bat`** — it creates the Python virtualenv on the data drive and installs all dependencies. You only need to do this once.
 
 ### Download models (about 265 MB)
 
@@ -45,7 +43,7 @@ Double-click **`models.bat`** — it downloads and extracts the face detection, 
 Age is estimated per face with the FairFace model (9 bands: 0-2, 3-9, 10-19, 20-29, 30-39, 40-49, 50-59, 60-69, 70+). It is **an estimate, not a fact**:
 
 - FairFace can misclassify low-resolution, blurry, profile, sunglasses or extreme-angle faces.
-- A single face may land in the wrong band (for example, a 19-year-old showing 0-2). This is a known FairFace limitation on some faces.
+- A single face may land in the wrong band. This is a known FairFace limitation on some faces.
 - Once a face joins a cluster with multiple photos, the cluster averages the age predictions across all its faces, so one wrong guess gets washed out.
 - The cluster-level age band is what shows in the gallery; individual face ages are still stored but are less reliable.
 
@@ -97,7 +95,7 @@ $env:MEDIA_SORTER_LLM = "off"
 \.venv\Scripts\python.exe -m app serve
 ```
 
-When Ollama is available, the configured local model may turn less predictable wording into a structured search plan. It never writes SQL and its people/place values are validated before use. On this laptop, the quick parser is the responsive path; use `MEDIA_SORTER_LLM=off` when you want immediate results.
+When Ollama is available, the configured local model may turn less predictable wording into a structured search plan. It never writes SQL and its people/place values are validated before use. Use `MEDIA_SORTER_LLM=off` when you want immediate results.
 
 The `refresh` command backfills metadata for existing files. `video-scan` samples existing videos for faces. `watch` periodically rescans configured folders; it does not delete files.
 
@@ -118,18 +116,6 @@ To compare thresholds without touching the database, sweep the stored embeddings
 .\.venv\Scripts\python.exe tools\threshold_sweep.py --min 0.30 --max 0.65 --step 0.05
 ```
 
-Measured on your real 2,877-face library:
-
-| threshold | people | clusters | singleton faces | largest cluster |
-|---|---|---|---|---|
-| 0.40 | 153 | 873 | 720 | 414 |
-| **0.50** | **144** | **665** | **521** | **478** |
-| 0.55 | 146 | 581 | 435 | 484 |
-
-0.50 cuts clusters from 814 (0.45 greedy) to 665 while the named-people clusters grow (Shivansh 162→166, Jyotshna 445→478, Kakul 251→267). At 0.55 the people count ticks up (144→146), an early sign of over-merging different people, so 0.50 stays the default.
-
-The sweep was run on your real 2,877-face library; no faces were re-embedded. Your library now has 144 people (2+ faces) and 665 clusters total.
-
 ## What is stored
 
 ```
@@ -142,19 +128,6 @@ models\            ONNX models
 `media` keeps the absolute path, size, mtime, SHA-1, EXIF capture time (fallback: file mtime), dimensions and kind. `faces` keeps the box, detection score, 512-d embedding, cluster id, age estimate/band, gender and crop path.
 
 Deleting `data\` rebuilds everything on the next scan. Deleting one thumbnail only breaks that preview.
-
-## Measured performance
-
-Machine: IdeaPad, i5-10210U (4 cores / 8 threads), MX130 2 GB, 12 GB RAM. ONNX Runtime on CPU with 4 threads; the GPU is not used.
-
-| Run | Files | Faces | Time | Rate |
-|---|---|---|---|---|
-| `D:\Media` full library | 1,855 (1,575 photos + 280 videos) | 2,407 | 1,978 s | **56 files/min** (~1.07 s/file) |
-| 30-photo test folder (12 MP phone photos) | 30 | 44 | 25.6 s | **70 photos/min** |
-
-The full run produced 150 people with 2+ faces, 612 clusters in total, 462 unsorted faces, and 0 errors. Most time goes to JPEG decode, SCRFD detection (~200 ms) and ArcFace embedding (~140 ms per face); a group photo with six faces takes proportionally longer. Re-scans of an unchanged folder finish in seconds.
-
-Disk use after indexing `D:\Media`: about 70 MB of thumbnails plus the SQLite file. The venv is about 350 MB, models about 265 MB. No pip cache, model cache or temp data is written to C:.
 
 ## Privacy
 
