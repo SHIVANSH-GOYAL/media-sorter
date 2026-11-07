@@ -1,0 +1,48 @@
+# Python / virtualenv
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Local data (rebuilt on every scan; user-specific)
+data/
+scan.cfg
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+*.lnk
+
+# Models (large binary downloads, ~265 MB — one-time via models.bat)
+models/*.onnx
+models/*.zip
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build / dist
+dist/
+build/
+*.egg-info/
+__pycache__

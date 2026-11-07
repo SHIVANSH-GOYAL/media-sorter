@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ person.name }} - Media Sorter</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --line: #2a2f3a;
+    --text: #e8eaf0; --muted: #939aab; --accent: #7c9cff; --accent-2: #4f6ef7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding: 18px 24px 8px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header nav { display: flex; gap: 12px; margin-left: auto; }
+  header nav a, .links a { color: var(--muted); text-decoration: none; font-size: 13px; }
+  header nav a:hover, .links a:hover { color: var(--accent); }
+  main { padding: 0 24px 60px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  form.inline { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  input[type=text], select {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 9px; font: inherit; min-width: 200px;
+  }
+  button {
+    background: var(--accent-2); color: #fff; border: 0; border-radius: 8px;
+    padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  button.tiny { padding: 3px 8px; font-size: 11px; background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  button:hover { filter: brightness(1.1); }
+  .hint { color: var(--muted); font-size: 12px; }
+  .row-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 6px 2px 12px; }
+  .row-head .count { color: var(--muted); font-size: 13px; }
+  .faces { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(126px, 1fr)); }
+  .face { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; }
+  .face img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: #10131a; }
+  .face .meta { font-size: 11px; color: var(--muted); margin: 5px 0 4px; line-height: 1.35; }
+  .face .low { color: #f0b45a; }
+  .pager { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 22px; }
+  .pager a { color: var(--accent); text-decoration: none; }
+  .pager span { color: var(--muted); }
+  @media (max-width: 640px) {
+    header, main { padding-left: 12px; padding-right: 12px; }
+    .faces { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{ person.name }}</h1>
+  <span class="meta">{{ total }} face{% if total != 1 %}s{% endif %}{% if person.auto_name == 0 %} &middot; named by you{% else %} &middot; auto cluster{% endif %}</span>
+  <nav>
+    <a href="/people">People</a>
+    <a href="/?person={{ person.id }}">Photos of {{ person.name }}</a>
+    <a href="/search">Ask</a>
+    <a href="/">Gallery</a>
+  </nav>
+</header>
+<main>
+  <div class="panel">
+    <form class="inline" method="post" action="/api/people/{{ person.id }}/rename">
+      <input type="hidden" name="next" value="{{ here }}">
+      <label>Name
+        <input type="text" name="name" value="{{ person.name }}" maxlength="60">
+      </label>
+      <button type="submit">Save name</button>
+    </form>
+    <form class="inline" method="post" action="/api/people/{{ person.id }}/merge" style="margin-top:12px"
+          onsubmit="return confirm('Merge this person into the chosen person? All faces move there and this card disappears.')">
+      <label>Merge into
+        <select name="target_id" required>
+          <option value="">Choose a person</option>
+          {% for t in targets %}<option value="{{ t.id }}">{{ t.name }} ({{ t.n }})</option>{% endfor %}
+        </select>
+      </label>
+      <button class="ghost" type="submit">Merge</button>
+    </form>
+    <p class="hint" style="margin:10px 0 0">Wrong face in here? Use "Not this person" below; it moves that face to Unsorted, so you can name it elsewhere. Merging is useful when one real person was split into two cards.</p>
+    <form class="inline" method="post" action="/api/people/{{ person.id }}/age" style="margin-top:10px">
+      <label>Set age band for {{ person.name }}
+        <select name="age_band" required>
+          <option value="">Choose&hellip;</option>
+          <option value="0-2">0-2</option>
+          <option value="3-9">3-9</option>
+          <option value="10-19">10-19</option>
+          <option value="20-29">20-29</option>
+          <option value="30-39">30-39</option>
+          <option value="40-49">40-49</option>
+          <option value="50-59">50-59</option>
+          <option value="60-69">60-69</option>
+          <option value="70+">70+</option>
+        </select>
+      </label>
+      <button type="submit">Save age</button>
+    </form>
+    <p class="hint">Age is a model estimate (FairFace) and can be wrong on single faces — setting it here overrides the estimate for every face in this person's card.</p>
+  </div>
+
+  <div class="row-head">
+    <span class="count">Page {{ page }} of {{ pages }}</span>
+    <span class="hint">Age and confidence are estimates from the face model.</span>
+  </div>
+
+  <div class="faces">
+    {% for f in faces %}
+    <div class="face">
+      <a href="/media/{{ f.media_id }}" target="_blank" rel="noopener">
+        {% if f.thumb %}<img src="/face/{{ f.id }}" alt="" loading="lazy">{% endif %}
+      </a>
+      <div class="meta">
+        {{ (f.taken_at or '')[:10] }}<br>
+        {{ f.age_band or '?' }}{% if f.age_conf %} &middot; {{ (f.age_conf * 100)|round|int }}%{% endif %}
+        {% if f.frame_time is not none %}<br>video {{ f.frame_time|round(1) }}s{% endif %}
+        {% if f.age_conf and f.age_conf < 0.35 %}<br><span class="low">low confidence</span>{% endif %}
+      </div>
+      <form method="post" action="/api/faces/{{ f.id }}/move" class="inline-move" style="display:flex;gap:6px;align-items:center;margin-top:6px">
+        <input type="hidden" name="next" value="{{ here }}">
+        <select name="target_id" required>
+          <option value="">Move to&hellip;</option>
+          {% for t in targets %}<option value="{{ t.id }}">{{ t.name }} ({{ t.n }})</option>{% endfor %}
+        </select>
+        <button class="tiny" type="submit">Move</button>
+      </form>
+      <form method="post" action="/api/faces/{{ f.id }}/detach" style="margin-top:4px">
+        <input type="hidden" name="next" value="{{ here }}">
+        <button class="tiny" type="submit" title="Move this face to Unsorted">Not this person</button>
+      </form>
+      <form method="post" action="/api/faces/{{ f.id }}/age" class="inline-move" style="display:flex;gap:6px;align-items:center;margin-top:4px">
+        <input type="hidden" name="next" value="{{ here }}">
+        <select name="age_band" required>
+          <option value="">Fix age&hellip;</option>
+          <option value="0-2">0-2</option>
+          <option value="3-9">3-9</option>
+          <option value="10-19">10-19</option>
+          <option value="20-29">20-29</option>
+          <option value="30-39">30-39</option>
+          <option value="40-49">40-49</option>
+          <option value="50-59">50-59</option>
+          <option value="60-69">60-69</option>
+          <option value="70+">70+</option>
+        </select>
+        <button class="tiny" type="submit">Set</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if pages > 1 %}
+  <div class="pager">
+    {% if page > 1 %}<a href="/person/{{ person.id }}?{{ prev_qs }}">&larr; Previous</a>{% endif %}
+    <span>Page {{ page }} / {{ pages }}</span>
+    {% if page < pages %}<a href="/person/{{ person.id }}?{{ next_qs }}">Next &rarr;</a>{% endif %}
+  </div>
+  {% endif %}
+</main>
+</body>
+</html>

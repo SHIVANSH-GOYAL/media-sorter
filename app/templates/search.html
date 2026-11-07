@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask - Media Sorter</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --line: #2a2f3a;
+    --text: #e8eaf0; --muted: #939aab; --accent: #7c9cff; --accent-2: #4f6ef7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding: 18px 24px 8px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header .meta b { color: var(--text); font-weight: 600; }
+  header nav { display: flex; gap: 12px; margin-left: auto; }
+  header nav a { color: var(--muted); text-decoration: none; font-size: 13px; }
+  header nav a:hover { color: var(--accent); }
+  main { padding: 0 24px 60px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  form.ask { display: flex; gap: 8px; }
+  input[type=text] {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 9px; font: inherit; min-width: 0;
+  }
+  form.ask input[type=text] { flex: 1; font-size: 15px; padding: 10px 12px; }
+  button {
+    background: var(--accent-2); color: #fff; border: 0; border-radius: 8px;
+    padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  button:hover { filter: brightness(1.1); }
+  .hint { color: var(--muted); font-size: 12px; }
+  .hint a { color: var(--accent); text-decoration: none; }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .examples a {
+    color: var(--muted); text-decoration: none; font-size: 12px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
+  }
+  .examples a:hover { color: var(--text); border-color: #3d4658; }
+  .readback { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .tag {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    background: #232937; border: 1px solid #2e3543; color: #c7d0e2; text-decoration: none;
+  }
+  .tag.person { background: #1f2a44; border-color: #2f4470; color: #bcd0ff; }
+  .tag.exclude { background: #3a2328; border-color: #5a3038; color: #f0b7c0; }
+  .tag.mode { background: #2a2333; border-color: #3b3147; color: #d2b9e8; }
+  .tag.plain { background: transparent; color: var(--muted); }
+  .source { font-size: 12px; color: var(--muted); }
+  .source b { color: var(--text); }
+  .explain { font-size: 15px; margin: 0 0 10px; }
+  .warn { color: #f0b45a; font-size: 13px; }
+  .save { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .save input[type=text] { min-width: 220px; }
+  .row-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 6px 2px 12px; }
+  .row-head .count { color: var(--muted); font-size: 13px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: zoom-in; }
+  .card:hover { border-color: #3d4658; }
+  .thumbwrap { position: relative; }
+  .thumb { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #10131a; }
+  .thumb.missing { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
+  .badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.65); padding: 2px 7px; border-radius: 6px; font-size: 11px; }
+  .fav { position: absolute; top: 6px; right: 6px; }
+  .fav button { background: rgba(0,0,0,.55); border: 0; border-radius: 8px; padding: 3px 8px; font-size: 16px; line-height: 1.2; color: #ffd479; cursor: pointer; }
+  .card .body { padding: 8px 10px 10px; }
+  .card .when { font-size: 12px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .chip { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: #232937; color: #b9c2d6; border: 1px solid #2e3543; }
+  .chip.band { background: #2a2333; border-color: #3b3147; color: #d2b9e8; }
+  .empty { text-align: center; color: var(--muted); padding: 50px 20px; }
+  .empty code { color: var(--text); background: var(--panel-2); padding: 3px 7px; border-radius: 6px; }
+  .pager { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 22px; }
+  .pager a { color: var(--accent); text-decoration: none; }
+  .pager span { color: var(--muted); }
+  .saved { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .saved form { display: inline; }
+  .saved button.link { background: none; border: 0; color: #6b7285; cursor: pointer; font-size: 11px; padding: 0 3px; }
+  dialog { background: transparent; border: 0; padding: 0; max-width: 96vw; max-height: 94vh; }
+  dialog::backdrop { background: rgba(0,0,0,.85); }
+  dialog img, dialog video { max-width: 94vw; max-height: 86vh; border-radius: 8px; display: block; }
+  dialog .cap { color: #cfd5e3; text-align: center; padding: 10px; font-size: 13px; }
+  dialog .cap a { color: #8ab4ff; }
+  dialog .cap .warn { color: #f0b45a; display: block; margin-top: 4px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  @media (max-width: 640px) {
+    header, main { padding-left: 12px; padding-right: 12px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ask your library</h1>
+  <span class="meta"><b>{{ stats.media }}</b> files &middot; <b>{{ stats.faces }}</b> faces &middot; <b>{{ stats.people }}</b> people</span>
+  <nav>
+    <a href="/">Gallery</a>
+    <a href="/people">People</a>
+    <a href="/duplicates">Duplicates</a>
+    <a href="/?fav=1">Favourites</a>
+  </nav>
+</header>
+<main>
+  <div class="panel">
+    <form class="ask" method="get" action="/search">
+      <input type="text" name="q" value="{{ q }}" placeholder="e.g. Person 13 and Person 27 in the same photo at Sports meet, or videos from last month" autofocus>
+      <button type="submit">Ask</button>
+    </form>
+    <div class="examples">
+      <a href="/search?q=Person+13+and+Person+27+in+the+same+photo">two people together</a>
+      <a href="/search?q=photos+at+Sports+meet">a place</a>
+      <a href="/search?q=kids+in+2024">kids in 2024</a>
+      <a href="/search?q=videos+from+last+month">videos last month</a>
+      <a href="/search?q=Person+13+without+Person+27">one person without another</a>
+    </div>
+    <div class="hint" style="margin-top:8px">
+      {% if ai %}Reasoning runs locally with <b>{{ models }}</b> through Ollama. Nothing leaves this laptop.
+      {% else %}Local AI is not answering right now; quick matching still works.{% endif %}
+      {% if not quick %}<a href="/search?{{ (('q=' ~ q|urlencode) if q else '') }}{% if q %}&amp;{% endif %}quick=1">Use quick matching instead</a>{% endif %}
+    </div>
+  </div>
+
+  {% if intent %}
+  <div class="panel">
+    <div class="row-head" style="margin:0 0 8px">
+      <span class="source">
+        {% if intent.source == 'ai' %}<b>Local AI</b> &middot; {{ intent.model }}{% else %}<b>Quick match</b>{% endif %}
+      </span>
+      <span class="hint">{{ total }} result{% if total != 1 %}s{% endif %}</span>
+    </div>
+    <p class="explain">{{ intent.explanation }}</p>
+    <div class="readback">
+      {% for p in intent.people %}
+      <a class="tag person" href="/?person={{ p.id }}">{{ p.name }}</a>
+      {% endfor %}
+      {% if intent.mode == 'all' and intent.people|length > 1 %}<span class="tag mode">same photo</span>{% endif %}
+      {% for p in intent.exclude %}<span class="tag exclude">not {{ p.name }}</span>{% endfor %}
+      {% if intent.place %}<span class="tag">place: {{ intent.place }}</span>{% endif %}
+      {% if intent.from %}<span class="tag">{{ intent.from }}{% if intent.to and intent.to != intent.from %} to {{ intent.to }}{% endif %}</span>{% endif %}
+      {% for b in intent.bands %}<span class="tag">age {{ b }}</span>{% endfor %}
+      {% if intent.kind %}<span class="tag">{{ intent.kind }}s only</span>{% endif %}
+      <span class="tag plain">{{ intent.sort }}</span>
+    </div>
+
+    {% if intent.unknown %}
+    <p class="warn">I could not find {% for u in intent.unknown %}"{{ u }}"{% if not loop.last %}, {% endif %}{% endfor %}.
+      {% if suggestions %}Did you mean {% for s in suggestions %}<a href="/people?q={{ s|urlencode }}" style="color:var(--accent)">{{ s }}</a>{% if not loop.last %}, {% endif %}{% endfor %}?{% endif %}
+      Rename people on the <a href="/people" style="color:var(--accent)">People page</a> so they are easier to ask for.</p>
+    {% endif %}
+    {% for note in intent.notes %}<p class="hint">{{ note }}</p>{% endfor %}
+    {% if not intent.people and not intent.place and not intent.from and not intent.bands and not intent.kind and not intent.exclude %}
+    <p class="warn">No filters were recognised, so this shows everything. Try naming people, a folder, a year, or an age.</p>
+    {% endif %}
+
+    {% if q %}
+    <div class="save">
+      <form method="post" action="/api/searches/save" class="save">
+        <input type="hidden" name="q" value="{{ q }}">
+        <input type="hidden" name="next" value="{{ here }}">
+        <input type="text" name="name" placeholder="Name this search" maxlength="60">
+        <button class="ghost" type="submit">Save search</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if saved %}
+  <div class="panel">
+    <div class="hint" style="margin-bottom:8px">Saved searches</div>
+    <div class="saved">
+      {% for s in saved %}
+      <span class="tag"><a href="/search?q={{ s.query|urlencode }}" style="color:inherit;text-decoration:none">{{ s.name }}</a></span>
+      <form method="post" action="/api/searches/{{ s.id }}/delete">
+        <input type="hidden" name="next" value="{{ here }}">
+        <button class="link" type="submit" title="Delete saved search">x</button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if q %}
+  <div class="row-head">
+    <span class="count">{{ total }} match{% if total != 1 %}es{% endif %}{% if page > 1 %} &middot; page {{ page }} of {{ pages }}{% endif %}</span>
+    <span class="hint">Ages are AI estimates, not facts.</span>
+  </div>
+  {% endif %}
+
+  {% if rows %}
+  <div class="grid">
+    {% for m in rows %}
+    {% set c = chips.get(m.id, {'names': [], 'bands': []}) %}
+    <div class="card" data-src="/media/{{ m.id }}" data-kind="{{ m.kind }}"
+         data-t="{{ seeks.get(m.id, '') }}"
+         data-cap="{{ (m.taken_at or '')[:16] }}{% if c.names %} · {{ c.names|join(', ') }}{% endif %}">
+      <div class="thumbwrap">
+        {% if m.thumb %}<img class="thumb" src="/thumb/{{ m.id }}" alt="" loading="lazy">{% else %}<div class="thumb missing">no preview</div>{% endif %}
+        {% if m.kind == 'video' %}<span class="badge">VIDEO</span>{% endif %}
+        <form class="fav" method="post" action="/api/media/{{ m.id }}/favorite" onclick="event.stopPropagation()">
+          <input type="hidden" name="next" value="{{ here }}">
+          <button type="submit" title="{% if m.favorite %}Remove from favourites{% else %}Add to favourites{% endif %}">{% if m.favorite %}&#9733;{% else %}&#9734;{% endif %}</button>
+        </form>
+      </div>
+      <div class="body">
+        <div class="when">{{ (m.taken_at or '')[:10] }}{% if m.face_count %} &middot; {{ m.face_count }} face{% if m.face_count != 1 %}s{% endif %}{% endif %}</div>
+        {% if c.names or c.bands %}
+        <div class="chips">
+          {% for n in c.names[:3] %}<span class="chip">{{ n }}</span>{% endfor %}
+          {% for b in c.bands[:2] %}<span class="chip band">{{ b }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="pager">
+    {% if page > 1 %}<a href="/search?{{ prev_qs }}">&larr; Previous</a>{% endif %}
+    <span>Page {{ page }} / {{ pages }}</span>
+    {% if page < pages %}<a href="/search?{{ next_qs }}">Next &rarr;</a>{% endif %}
+  </div>
+  {% elif q %}
+  <div class="empty">
+    <p>Nothing matches that yet.</p>
+    <p class="hint">Try fewer words, check the names on the <a href="/people" style="color:var(--accent)">People page</a>, or ask for just the place or year.</p>
+  </div>
+  {% elif not saved %}
+  <div class="empty">
+    <p>Ask in plain words, for example:</p>
+    <p><code>Person 13 and Person 27 in the same photo</code></p>
+    <p><code>photos of Person 6 at Sports meet in 2025</code></p>
+  </div>
+  {% endif %}
+</main>
+
+<dialog id="viewer">
+  <div id="viewer-body"></div>
+  <div class="cap" id="viewer-cap"></div>
+</dialog>
+<script>
+  const viewer = document.getElementById('viewer');
+  const vbody = document.getElementById('viewer-body');
+  const vcap = document.getElementById('viewer-cap');
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => {
+      const src = card.dataset.src;
+      vbody.innerHTML = '';
+      if (card.dataset.kind === 'video') {
+        const v = document.createElement('video');
+        v.src = src; v.controls = true; v.autoplay = true;
+        const start = parseFloat(card.dataset.t || '');
+        if (Number.isFinite(start) && start > 0) {
+          v.addEventListener('loadedmetadata', () => { try { v.currentTime = start; } catch (e) {} }, { once: true });
+        }
+        v.addEventListener('error', () => {
+          v.remove();
+          const w = document.createElement('div');
+          w.className = 'warn';
+          w.textContent = 'This video format does not play in the browser.';
+          vbody.appendChild(w);
+        });
+        vbody.appendChild(v);
+      } else {
+        const i = document.createElement('img');
+        i.src = src; i.alt = '';
+        vbody.appendChild(i);
+      }
+      vcap.textContent = card.dataset.cap || '';
+      const open = document.createElement('a');
+      open.href = src; open.target = '_blank'; open.rel = 'noopener';
+      open.textContent = 'Open original';
+      vcap.appendChild(document.createElement('br'));
+      vcap.appendChild(open);
+      viewer.showModal();
+    });
+  });
+  viewer.addEventListener('click', e => { if (e.target === viewer) viewer.close(); });
+  viewer.addEventListener('close', () => { vbody.innerHTML = ''; });
+</script>
+</body>
+</html>

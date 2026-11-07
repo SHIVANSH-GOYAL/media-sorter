@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Media Sorter</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --line: #2a2f3a;
+    --text: #e8eaf0;
+    --muted: #939aab;
+    --accent: #7c9cff;
+    --accent-2: #4f6ef7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+  }
+  header {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
+    padding: 18px 24px 8px;
+  }
+  header h1 { margin: 0; font-size: 20px; letter-spacing: .2px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header .meta b { color: var(--text); font-weight: 600; }
+  header nav { display: flex; gap: 12px; margin-left: auto; }
+  header nav a { color: var(--muted); text-decoration: none; font-size: 13px; }
+  header nav a:hover { color: var(--accent); }
+  .ask form { display: flex; gap: 8px; }
+  .ask input[type=text] { flex: 1; min-width: 0; font-size: 15px; padding: 10px 12px; }
+  .ask .hint { margin-top: 6px; }
+  .fav { position: absolute; top: 6px; right: 6px; }
+  .fav button {
+    background: rgba(0,0,0,.55); border: 0; border-radius: 8px; padding: 3px 8px;
+    font-size: 16px; line-height: 1.2; color: #ffd479; cursor: pointer;
+  }
+  .fav button:hover { filter: brightness(1.25); }
+  main { padding: 0 24px 60px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px; margin-bottom: 16px;
+  }
+  form.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  select, input[type=date], input[type=text] {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 9px; font: inherit; min-width: 130px;
+  }
+  input[type=date] { min-width: 145px; }
+  button {
+    background: var(--accent-2); color: #fff; border: 0; border-radius: 8px;
+    padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  button:hover { filter: brightness(1.1); }
+  .people { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+  .person {
+    flex: 0 0 auto; width: 122px; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px; text-align: center;
+  }
+  .person img, .person .ph {
+    width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
+    background: #262b36; display: inline-block;
+  }
+  .person .cnt { color: var(--muted); font-size: 11px; }
+  .person form { display: flex; gap: 4px; margin-top: 6px; }
+  .person input[type=text] { min-width: 0; width: 100%; padding: 4px 6px; font-size: 12px; }
+  .person button { padding: 4px 6px; font-size: 11px; }
+  a.person-link { color: var(--muted); font-size: 11px; text-decoration: none; }
+  a.person-link:hover { color: var(--accent); }
+  .row-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 6px 2px 12px; }
+  .row-head .count { color: var(--muted); font-size: 13px; }
+  .grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    overflow: hidden; cursor: zoom-in; transition: border-color .15s;
+  }
+  .card:hover { border-color: #3d4658; }
+  .thumb { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #10131a; }
+  .thumb.missing { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
+  .card .body { padding: 8px 10px 10px; }
+  .card .when { font-size: 12px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .chip {
+    font-size: 11px; padding: 2px 7px; border-radius: 999px;
+    background: #232937; color: #b9c2d6; border: 1px solid #2e3543;
+  }
+  .chip.band { background: #2a2333; border-color: #3b3147; color: #d2b9e8; }
+  .badge {
+    position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.65);
+    padding: 2px 7px; border-radius: 6px; font-size: 11px;
+  }
+  .thumbwrap { position: relative; }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .empty code { color: var(--text); background: var(--panel-2); padding: 3px 7px; border-radius: 6px; }
+  .pager { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 22px; }
+  .pager a { color: var(--accent); text-decoration: none; }
+  .pager span { color: var(--muted); }
+  dialog {
+    background: transparent; border: 0; padding: 0; max-width: 96vw; max-height: 94vh;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.85); }
+  dialog img, dialog video { max-width: 94vw; max-height: 86vh; border-radius: 8px; display: block; }
+  dialog .cap { color: #cfd5e3; text-align: center; padding: 10px; font-size: 13px; }
+  dialog .cap a { color: #8ab4ff; }
+  dialog .cap .warn { color: #f0b45a; display: block; margin-top: 4px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .manage { color: var(--accent); text-decoration: none; font-size: 13px; white-space: nowrap; }
+  .hint { color: var(--muted); font-size: 12px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  @media (max-width: 640px) {
+    header, main { padding-left: 12px; padding-right: 12px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Media Sorter</h1>
+  <span class="meta">
+    <b>{{ stats.media }}</b> files &middot; <b>{{ stats.faces }}</b> faces &middot;
+    <b>{{ stats.people }}</b> people &middot; <b>{{ stats.unsorted }}</b> unsorted faces
+    {% if stats.first %} &middot; {{ stats.first[:10] }} &rarr; {{ stats.last[:10] }}{% endif %}
+  </span>
+  <nav>
+    <a href="/search">Ask</a>
+    <a href="/people">People</a>
+    <a href="/duplicates">Duplicates</a>
+    <a href="/?fav=1">Favourites{% if stats.favorites %} ({{ stats.favorites }}){% endif %}</a>
+  </nav>
+</header>
+<main>
+  <div class="panel ask">
+    <form method="get" action="/search">
+      <input type="text" name="q" placeholder="e.g. Person 13 and Person 27 in the same photo, at Sports meet, 2024" aria-label="Ask for photos">
+      <button type="submit">Ask</button>
+    </form>
+    <div class="hint">Plain words. Finds people together, places, dates, ages, photos or videos.</div>
+  </div>
+
+  <div class="panel">
+    <form class="filters" method="get" action="/">
+      {% if sel.fav %}<input type="hidden" name="fav" value="1">{% endif %}
+      <label>Person
+        <select name="person">
+          <option value="">Everyone</option>
+          <option value="unsorted" {% if sel.person == 'unsorted' %}selected{% endif %}>Unsorted only</option>
+          {% for p in people_all %}
+          <option value="{{ p.id }}" {% if sel.person == p.id|string %}selected{% endif %}>{{ p.name }} ({{ p.n }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Age band (estimate)
+        <select name="band">
+          <option value="">Any age</option>
+          {% for b in band_order %}
+          <option value="{{ b }}" {% if sel.band == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Media type
+        <select name="kind">
+          <option value="" {% if not sel.kind %}selected{% endif %}>Photos + videos</option>
+          <option value="image" {% if sel.kind == 'image' %}selected{% endif %}>Photos only</option>
+          <option value="video" {% if sel.kind == 'video' %}selected{% endif %}>Videos only</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" name="only" value="1" {% if sel.only %}checked{% endif %}> Only this person</label>
+      <label>From
+        <input type="date" name="dfrom" value="{{ sel.dfrom }}">
+      </label>
+      <label>To
+        <input type="date" name="dto" value="{{ sel.dto }}">
+      </label>
+      <label>Place, file or camera
+        <input type="text" name="text" value="{{ sel.text }}" placeholder="e.g. Sports meet">
+      </label>
+      <button type="submit">Apply</button>
+      <a href="/"><button type="button" class="ghost">Reset</button></a>
+    </form>
+  </div>
+
+  {% if people or unsorted_faces %}
+  <div class="panel">
+    <div class="row-head" style="margin-bottom:8px">
+      <strong>People</strong>
+      <div class="toolbar">
+        <span class="hint">Rename anyone; regroup if the clusters look wrong.</span>
+        <a class="manage" href="/people">All {{ stats.people }} people &rarr;</a>
+        <form method="post" action="/api/recluster" onsubmit="return confirm('Recompute all face clusters? Custom names are kept where they still overlap.')">
+          <button class="ghost" type="submit">Recluster</button>
+        </form>
+      </div>
+    </div>
+    <div class="people">
+      {% for p in people %}
+      <div class="person">
+        <a href="/?person={{ p.id }}" title="Show photos of {{ p.name }}">
+          {% if p.face_id %}<img src="/face/{{ p.face_id }}" alt="{{ p.name }}" loading="lazy">{% else %}<span class="ph"></span>{% endif %}
+        </a>
+        <div><a class="person-link" href="/?person={{ p.id }}">{{ p.n }} photos</a></div>
+        <form method="post" action="/api/people/{{ p.id }}/rename">
+          <input type="hidden" name="next" value="{{ here }}">
+          <input type="text" name="name" value="{{ p.name }}" maxlength="60" aria-label="Name">
+          <button type="submit" title="Save name">Save</button>
+        </form>
+      </div>
+      {% endfor %}
+      {% if unsorted_faces %}
+      <div class="person">
+        <a href="/?person=unsorted" title="Show unsorted photos"><span class="ph" style="display:inline-flex;align-items:center;justify-content:center;color:#939aab">?</span></a>
+        <div><a class="person-link" href="/?person=unsorted">{{ unsorted_faces }} faces</a></div>
+        <div class="cnt">Unsorted</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row-head">
+    <span class="count">{{ total }} match{% if total != 1 %}es{% endif %}{% if page > 1 %} &middot; page {{ page }} of {{ pages }}{% endif %}</span>
+    <span class="hint">Ages are AI estimates, not facts.</span>
+  </div>
+
+  {% if rows %}
+  <div class="grid">
+    {% for m in rows %}
+    {% set c = chips.get(m.id, {'names': [], 'bands': []}) %}
+    <div class="card" data-src="/media/{{ m.id }}" data-kind="{{ m.kind }}"
+         data-t="{{ seeks.get(m.id, '') }}"
+         data-cap="{{ (m.taken_at or '')[:16] }}{% if c.names %} · {{ c.names|join(', ') }}{% endif %}">
+      <div class="thumbwrap">
+        {% if m.thumb %}
+        <img class="thumb" src="/thumb/{{ m.id }}" alt="" loading="lazy">
+        {% else %}
+        <div class="thumb missing">no preview</div>
+        {% endif %}
+        {% if m.kind == 'video' %}<span class="badge">VIDEO</span>{% endif %}
+        <form class="fav" method="post" action="/api/media/{{ m.id }}/favorite" onclick="event.stopPropagation()">
+          <input type="hidden" name="next" value="{{ here }}">
+          <button type="submit" title="{% if m.favorite %}Remove from favourites{% else %}Add to favourites{% endif %}">{% if m.favorite %}&#9733;{% else %}&#9734;{% endif %}</button>
+        </form>
+      </div>
+      <div class="body">
+        <div class="when">{{ (m.taken_at or '')[:10] }}{% if m.face_count %} &middot; {{ m.face_count }} face{% if m.face_count != 1 %}s{% endif %}{% endif %}</div>
+        {% if c.names or c.bands %}
+        <div class="chips">
+          {% for n in c.names[:3] %}<span class="chip">{{ n }}</span>{% endfor %}
+          {% for b in c.bands[:2] %}<span class="chip band">{{ b }}</span>{% endfor %}
+        </div>
+        {% endif %}
+        {% if c.bands %}
+        <form method="post" action="/api/media/{{ m.id }}/age" style="margin-top:6px;display:flex;gap:6px;align-items:center">
+          <input type="hidden" name="next" value="{{ here }}">
+          <label style="margin:0;font-size:11px;color:var(--muted)">Fix age for all faces here:</label>
+          <select name="age_band" required style="font-size:11px;padding:3px 6px">
+            <option value="">Pick band</option>
+            {% for b in band_order %}
+            <option value="{{ b }}">{{ b }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" style="font-size:11px;padding:3px 8px">Set</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="pager">
+    {% if page > 1 %}<a href="/?{{ prev_qs }}">&larr; Newer</a>{% endif %}
+    <span>Page {{ page }} / {{ pages }}</span>
+    {% if page < pages %}<a href="/?{{ next_qs }}">Older &rarr;</a>{% endif %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <p>No files match these filters.</p>
+    {% if stats.media == 0 %}
+    <p>Index a folder first:</p>
+    <p><code>python -m app scan "D:\Media"</code></p>
+    {% endif %}
+  </div>
+  {% endif %}
+</main>
+
+<dialog id="viewer">
+  <div id="viewer-body"></div>
+  <div class="cap" id="viewer-cap"></div>
+</dialog>
+<script>
+  const viewer = document.getElementById('viewer');
+  const vbody = document.getElementById('viewer-body');
+  const vcap = document.getElementById('viewer-cap');
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => {
+      const src = card.dataset.src;
+      vbody.innerHTML = '';
+      if (card.dataset.kind === 'video') {
+        const v = document.createElement('video');
+        v.src = src; v.controls = true; v.autoplay = true;
+        const start = parseFloat(card.dataset.t || '');
+        if (Number.isFinite(start) && start > 0) {
+          v.addEventListener('loadedmetadata', () => { try { v.currentTime = start; } catch (e) {} }, { once: true });
+        }
+        v.addEventListener('error', () => {
+          v.remove();
+          const w = document.createElement('div');
+          w.className = 'warn';
+          w.textContent = 'This video format does not play in the browser.';
+          vbody.appendChild(w);
+        });
+        vbody.appendChild(v);
+      } else {
+        const i = document.createElement('img');
+        i.src = src; i.alt = '';
+        vbody.appendChild(i);
+      }
+      vcap.textContent = card.dataset.cap || '';
+      const open = document.createElement('a');
+      open.href = src; open.target = '_blank'; open.rel = 'noopener';
+      open.textContent = 'Open original';
+      vcap.appendChild(document.createElement('br'));
+      vcap.appendChild(open);
+      viewer.showModal();
+    });
+  });
+  viewer.addEventListener('click', e => {
+    if (e.target === viewer) viewer.close();
+  });
+  viewer.addEventListener('close', () => { vbody.innerHTML = ''; });
+</script>
+</body>
+</html>

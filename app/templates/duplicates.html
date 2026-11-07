@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Possible duplicates - Media Sorter</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --line: #2a2f3a;
+    --text: #e8eaf0; --muted: #939aab; --accent: #7c9cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding: 18px 24px 8px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header .meta b { color: var(--text); font-weight: 600; }
+  header nav { display: flex; gap: 12px; margin-left: auto; }
+  header nav a { color: var(--muted); text-decoration: none; font-size: 13px; }
+  header nav a:hover { color: var(--accent); }
+  main { padding: 0 24px 60px; }
+  .note { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 18px; color: var(--muted); font-size: 13px; }
+  .note b { color: var(--text); }
+  .group { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  .group .head { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .group .head .size { color: #f0b45a; }
+  .strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+  .shot { flex: 0 0 auto; width: 190px; cursor: zoom-in; }
+  .shot img { width: 190px; height: 143px; object-fit: cover; border-radius: 8px; background: #10131a; border: 1px solid var(--line); }
+  .shot .cap { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .shot .cap .keep { color: #7fd3a0; }
+  .shot .cap .star { color: #ffd479; }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  dialog { background: transparent; border: 0; padding: 0; }
+  dialog::backdrop { background: rgba(0,0,0,.85); }
+  dialog img { max-width: 94vw; max-height: 86vh; border-radius: 8px; display: block; }
+  dialog .cap { color: #cfd5e3; text-align: center; padding: 10px; font-size: 13px; }
+  dialog .cap a { color: #8ab4ff; }
+  @media (max-width: 640px) { header, main { padding-left: 12px; padding-right: 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Possible duplicates</h1>
+  <span class="meta"><b>{{ total_groups }}</b> group{% if total_groups != 1 %}s{% endif %} &middot; about <b>{{ wasted_mb }} MB</b> in extra copies</span>
+  <nav>
+    <a href="/">Gallery</a>
+    <a href="/people">People</a>
+    <a href="/search">Ask</a>
+    <a href="/?fav=1">Favourites</a>
+  </nav>
+</header>
+<main>
+  <div class="note">
+    Grouped by how the picture looks (perceptual hash within a small distance), so these are near-identical shots, not byte copies.
+    The first picture in each row is the largest file and is the suggested keeper; nothing is deleted here. Open a picture to see it properly, then remove extras yourself in Explorer if you want the space.
+    {% if total_groups > groups|length %}<br><b>Showing the first {{ groups|length }} groups.</b>{% endif %}
+  </div>
+
+  {% if groups %}
+  {% for g in groups %}
+  <div class="group">
+    <div class="head">
+      <span>{{ g|length }} pictures</span>
+      <span class="size">{{ ((g|sum(attribute='size') or 0) / 1048576)|round(1) }} MB total</span>
+    </div>
+    <div class="strip">
+      {% for m in g %}
+      <div class="shot" data-src="/media/{{ m.id }}" data-cap="{{ m.path }}">
+        {% if m.thumb %}<img src="/thumb/{{ m.id }}" alt="" loading="lazy">{% endif %}
+        <div class="cap">
+          {% if loop.first %}<span class="keep">keep</span> &middot; {% endif %}
+          {{ ((m.size or 0) / 1048576)|round(1) }} MB
+          {% if m.favorite %} <span class="star">&#9733;</span>{% endif %}
+          <br>{{ m.path }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="empty">
+    <p>No near-duplicates found.</p>
+    <p>New files are checked as they are scanned.</p>
+  </div>
+  {% endif %}
+</main>
+<dialog id="viewer">
+  <div id="viewer-body"></div>
+  <div class="cap" id="viewer-cap"></div>
+</dialog>
+<script>
+  const viewer = document.getElementById('viewer');
+  const vbody = document.getElementById('viewer-body');
+  const vcap = document.getElementById('viewer-cap');
+  document.querySelectorAll('.shot').forEach(shot => {
+    shot.addEventListener('click', () => {
+      vbody.innerHTML = '';
+      const i = document.createElement('img');
+      i.src = shot.dataset.src;
+      vbody.appendChild(i);
+      vcap.textContent = shot.dataset.cap || '';
+      const a = document.createElement('a');
+      a.href = shot.dataset.src; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = 'Open original';
+      vcap.appendChild(document.createElement('br'));
+      vcap.appendChild(a);
+      viewer.showModal();
+    });
+  });
+  viewer.addEventListener('click', e => { if (e.target === viewer) viewer.close(); });
+  viewer.addEventListener('close', () => { vbody.innerHTML = ''; });
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>People - Media Sorter</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --line: #2a2f3a;
+    --text: #e8eaf0; --muted: #939aab; --accent: #7c9cff; --accent-2: #4f6ef7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; padding: 18px 24px 8px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header a { color: var(--accent); text-decoration: none; font-size: 13px; }
+  main { padding: 0 24px 60px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  form.search { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  input[type=text] {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 9px; font: inherit; min-width: 240px;
+  }
+  button {
+    background: var(--accent-2); color: #fff; border: 0; border-radius: 8px;
+    padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  button:hover { filter: brightness(1.1); }
+  .pgrid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .person {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 10px; text-align: center;
+  }
+  .person img, .person .ph {
+    width: 76px; height: 76px; border-radius: 50%; object-fit: cover;
+    background: #262b36; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 24px;
+  }
+  .cnt { color: var(--muted); font-size: 12px; margin: 6px 0; }
+  .cnt a { color: var(--muted); text-decoration: none; }
+  .cnt a:hover { color: var(--accent); }
+  .person form { display: flex; gap: 4px; }
+  .person input[type=text] { min-width: 0; width: 100%; padding: 5px 6px; font-size: 12px; }
+  .person button { padding: 5px 7px; font-size: 11px; }
+  .row-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 6px 2px 12px; }
+  .row-head .count { color: var(--muted); font-size: 13px; }
+  .pager { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 22px; }
+  .pager a { color: var(--accent); text-decoration: none; }
+  .pager span { color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  @media (max-width: 640px) {
+    header, main { padding-left: 12px; padding-right: 12px; }
+    .pgrid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>People</h1>
+  <span class="meta">{{ total }} people with 2+ photos</span>
+  <a href="/">&larr; Gallery</a>
+  <a href="/search" style="margin-left:10px">Ask</a>
+  <a href="/duplicates" style="margin-left:10px">Duplicates</a>
+</header>
+<main>
+  {% if stats and stats.unsorted %}
+  <div class="panel" style="border-left:4px solid var(--accent-2);background:var(--panel-2)">
+    <strong>About {{ stats.unsorted }} unsorted face{{ stats.unsorted != 1 and 's' or '' }}</strong><br>
+    These are faces the detector found but couldn't confidently place with any person — each is its own single-face "Unsorted" cluster. Open a person's page and use "Move to&hellip;" to pull a face in, or "Not this person" to send a face back to Unsorted. They count toward your photo total but don't form a named person yet.
+  </div>
+  {% endif %}
+  <div class="panel">
+    <form class="search" method="get" action="/people">
+      <label>Search by name
+        <input type="text" name="q" value="{{ q }}" placeholder="e.g. Aarav or Person 13">
+      </label>
+      <button type="submit">Search</button>
+      <a href="/people"><button type="button" class="ghost">Clear</button></a>
+    </form>
+  </div>
+
+  <div class="row-head">
+    <span class="count">{{ total }} match{% if total != 1 %}es{% endif %}{% if page > 1 %} &middot; page {{ page }} of {{ pages }}{% endif %}</span>
+    <span class="count">Names are yours; ages are estimates.</span>
+  </div>
+
+  {% if rows %}
+  <div class="pgrid">
+    {% for p in rows %}
+    <div class="person">
+      <a href="/?person={{ p.id }}" title="Show photos of {{ p.name }}">
+        {% if p.face_id %}<img src="/face/{{ p.face_id }}" alt="{{ p.name }}" loading="lazy">{% else %}<span class="ph">?</span>{% endif %}
+      </a>
+      <div class="cnt"><a href="/?person={{ p.id }}">{{ p.n }} photo{% if p.n != 1 %}s{% endif %}</a> &middot; <a href="/person/{{ p.id }}">review</a></div>
+      <form method="post" action="/api/people/{{ p.id }}/rename">
+        <input type="hidden" name="next" value="{{ here }}">
+        <input type="text" name="name" value="{{ p.name }}" maxlength="60" aria-label="Name for {{ p.name }}">
+        <button type="submit">Save</button>
+      </form>
+      {% if p.name in dup_names %}
+      <form method="post" action="/api/people/merge-same-name" style="margin-top:6px"
+            onsubmit="return confirm('Merge all clusters named \"{{ p.name }}\" into the largest one? This cannot be undone.')">
+        <input type="hidden" name="name" value="{{ p.name }}">
+        <input type="hidden" name="next" value="{{ here }}">
+        <button class="tiny ghost" type="submit">Merge all "{{ p.name }}" clusters</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="pager">
+    {% if page > 1 %}<a href="/people?{{ prev_qs }}">&larr; Previous</a>{% endif %}
+    <span>Page {{ page }} / {{ pages }}</span>
+    {% if page < pages %}<a href="/people?{{ next_qs }}">Next &rarr;</a>{% endif %}
+  </div>
+  {% else %}
+  <div class="empty">
+    {% if q %}<p>No person matches "{{ q }}".</p>{% else %}<p>No people yet. Scan a folder first.</p>{% endif %}
+    <p><a href="/people" style="color:var(--accent)">Show all people</a></p>
+  </div>
+  {% endif %}
+</main>
+</body>
+</html>
