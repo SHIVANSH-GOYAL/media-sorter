@@ -5,7 +5,7 @@ Local, offline photo/video library that groups pictures by **who is in them**, t
 ## Clone & run
 
 ```powershell
-git clone https://github.com/<your-username>/media-sorter.git
+git clone https://github.com/SHIVANSH-GOYAL/media-sorter.git
 cd media-sorter
 ```
 
